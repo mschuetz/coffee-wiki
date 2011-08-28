@@ -6,7 +6,9 @@ Mu = require 'Mu'
 Mu.templateRoot = './html'
 fs = require 'fs'
 
-pages = new Mongolian().db("org").collection("pages")
+uri = process.env.MONGOHQ_URL or "mongo://localhost/org"
+console.log "going to connect to mongodb at " + uri
+pages = new Mongolian(uri).collection("pages")
 
 render = (template, ctx, httpResponse) ->
   Mu.render template, ctx, {}, (err, out) ->
@@ -95,4 +97,6 @@ server = Http.createServer (req, res) ->
         'Content-type': 'text/plain'
       httpResponse.end 'nil.'        
 
-server.listen 3000
+port = process.env.PORT or 3000
+console.log 'binding port ' + port
+server.listen port 
