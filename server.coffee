@@ -7,7 +7,8 @@ Mu.templateRoot = './html'
 fs = require 'fs'
 
 uri = process.env.MONGOHQ_URL or "mongo://localhost/org"
-console.log "going to connect to mongodb at " + uri
+# workaround because current release of mongolian cannot parse mongodb:// urls
+uri = uri.replace('mongodb://', 'mongo://')
 pages = new Mongolian(uri).collection("pages")
 
 render = (template, ctx, httpResponse) ->
