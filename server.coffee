@@ -5,6 +5,7 @@ Assert = require 'assert'
 Mu = require 'Mu'
 Mu.templateRoot = './html'
 fs = require 'fs'
+markdown = require('markdown').markdown
 
 uri = process.env.MONGOHQ_URL or "mongo://localhost/org"
 # workaround because current release of mongolian cannot parse mongodb:// urls
@@ -22,8 +23,7 @@ render = (template, ctx, httpResponse) ->
       httpResponse.end()
   
 serveNewEditor = (pagename, httpResponse) ->
-  httpResponse.writeHead 404,
-    'Content-type': 'text/html'
+  httpResponse.writeHead 404, 'Content-type': 'text/html; charset=utf-8'
   render 'editor.html', {title: pagename}, httpResponse
 
 servePage = (pagename, httpResponse) ->
@@ -36,9 +36,11 @@ servePage = (pagename, httpResponse) ->
         httpResponse.end err
       else if page
         console.log 'serving page ' + pagename
-        httpResponse.writeHead 200,
-          'Content-type': 'text/plain; charset=utf-8'
-        httpResponse.end page.content
+        httpResponse.writeHead 200, 'Content-type': 'text/html; charset=utf-8'
+        render 'page.html',
+          {title: pagename, content: () ->
+            markdown.toHTML(page.content)
+          }, httpResponse
       else
         serveNewEditor pagename, httpResponse
 
@@ -86,7 +88,7 @@ server = Http.createServer (req, res) ->
         else
           servePage pagename, res
       else
-        serveIndex(httpResponse)
+        serveIndex(res)
     when 'POST'
       if pagename
         savePage(pagename, req, res)

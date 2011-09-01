@@ -4,6 +4,7 @@
   "dependencies": {
     "Mu": "0.0.1",
     "mongolian": "0.1.10",
-    "coffee-script": "1.1.2"
+    "coffee-script": "1.1.2",
+    "markdown": "0.2.1"
   }
 }
