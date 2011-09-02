@@ -10,5 +10,6 @@
 		<div id="content">
 			{{{content}}}
 		</div>
+		<a href="/{{title}}/edit">Edit page</a>
 	</body>
 </html>

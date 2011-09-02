@@ -6,10 +6,10 @@
 		<link href="/__css__" rel="stylesheet"/>
 	</head>
 	<body>
-		{{title}} doesn't exist, yet. Would you like to create it?
+		Editing {{title}}
 		<div> 
-		<form method="POST" >
-			<p><textarea name="content" cols="80" rows="30"></textarea></p>
+		<form method="POST" action="/{{title}}" >
+			<p><textarea name="content" cols="80" rows="30">{{content}}</textarea></p>
 			<button>Save</button>
 		</form>
 		</div>

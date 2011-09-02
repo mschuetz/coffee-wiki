@@ -22,9 +22,18 @@ render = (template, ctx, httpResponse) ->
     out.addListener 'end', () ->
       httpResponse.end()
   
-serveNewEditor = (pagename, httpResponse) ->
-  httpResponse.writeHead 404, 'Content-type': 'text/html; charset=utf-8'
-  render 'editor.html', {title: pagename}, httpResponse
+serveEditor = (page, httpResponse) ->
+  pages.findOne title: page.title,
+    (err, page) ->
+      if err 
+        console.log err
+        httpResponse.writeHead 500,
+          'Content-type': 'text/plain'
+        httpResponse.end err
+      else 
+        status = (200 if page) or 404
+        httpResponse.writeHead status, 'Content-type': 'text/html; charset=utf-8'
+        render 'editor.html', {title: page.title, content: (page.content if page)}, httpResponse
 
 servePage = (pagename, httpResponse) ->
   pages.findOne title: pagename,
@@ -42,7 +51,11 @@ servePage = (pagename, httpResponse) ->
             markdown.toHTML(page.content)
           }, httpResponse
       else
-        serveNewEditor pagename, httpResponse
+        serveEditor {title: pagename, content: ''}, httpResponse
+
+serveErrorPage = (httpResponse, status, message) ->
+  httpResponse.writeHead status, 'Content-type': 'text/plain'
+  httpResponse.end 'internal error'
 
 savePage = (pagename, httpRequest, httpResponse) ->
   content = ""
@@ -52,8 +65,13 @@ savePage = (pagename, httpRequest, httpResponse) ->
     console.log content
     match = content.match('^content=(.+)$')
     if match
-      pages.insert {title: pagename, content: decodeURIComponent(match[1].replace(/\+/g, ' '))} 
-      servePage(pagename, httpResponse)
+      pagecontent = decodeURIComponent(match[1].replace(/\+/g, ' ')) 
+      pages.findAndModify {query: {title: pagename}, update : {title: pagename, content: pagecontent}, upsert: true}, (err, doc) ->
+        if err
+          console.log err
+          serveErrorPage(500, 'error while updating page')
+        # TODO: serve using result of modify
+        servePage(pagename, httpResponse)
     else
       httpResponse.end 'please provide some content'
 
@@ -68,30 +86,34 @@ serveStatic = (file, contentType, httpResponse) ->
       'Content-type': contentType
     httpResponse.end content
 
-getPageName = (url) ->
+parseRequestUrl = (url) ->
   path = Url.parse(url).pathname
   Assert.equal path[0], '/'
   if path.length == 1
     return null
-  match = path.match '^/(.+)'
-  decodeURI(match[1])
+    
+  components = path.split('/')
+  {page: decodeURI(components[1]), action: (decodeURI(components[2]) if components[2])}
 
 server = Http.createServer (req, res) ->
-  pagename = getPageName req.url
-  console.log req.method + " request on " + req.url 
+  action = parseRequestUrl req.url
+  console.log req.method + " request on " + req.url
+  console.log "action=" + JSON.stringify(action)
   switch (req.method)
     when 'GET'
-      if pagename
-        console.log pagename
-        if match = pagename.match('^__css__$')
+      if action
+        if match = action.page.match('^__css__$')
           serveStatic 'css', 'text/css', res
         else
-          servePage pagename, res
+          if (action.action == 'edit')
+            serveEditor {title: action.page, content: ''}, res
+          else
+            servePage action.page, res
       else
         serveIndex(res)
     when 'POST'
-      if pagename
-        savePage(pagename, req, res)
+      if action and action.page
+        savePage(action.page, req, res)
       else
         console.log 'a POST to nowhere'
     else
